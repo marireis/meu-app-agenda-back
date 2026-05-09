@@ -5,6 +5,8 @@ import { PrismaClient } from '@prisma/client';
 import { ServicoController } from './controller/ServicoController.js';
 import { HorarioController } from './controller/HorarioController.js';
 import { AgendamentoController } from './controller/AgendamentoController.js';
+import { AuthController } from './controller/AuthController.js';
+import { authMiddleware } from './middleware/authMiddleware.js';
 
 // Inicializa o Prisma e o Express
 const prisma = new PrismaClient();
@@ -14,6 +16,8 @@ const app = express();
 app.use(cors()); // Permite que o seu React (Front-end) converse com esta API
 app.use(express.json()); // Diz para o Express entender dados no formato JSON
 app.post('/api/servicos', ServicoController.criar);
+app.put('/api/servicos/:id', authMiddleware, ServicoController.atualizar); 
+app.delete('/api/servicos/:id', authMiddleware, ServicoController.deletar);
 app.get('/api/servicos/:empresaId', ServicoController.listarPorEmpresa);
 // Rotas de Agenda (O Empreendedor configurando seus horários de trabalho)
 app.put('/api/horarios', HorarioController.configurar);
@@ -23,9 +27,13 @@ app.get('/api/disponibilidade', AgendamentoController.listarDisponibilidade);
 app.post('/api/agendamentos', AgendamentoController.criar); 
 // Rota do Webhook (O "Telefone" do Asaas)
 app.post('/api/webhook/asaas', AgendamentoController.webhookAsaas);
+// Autenticação
+app.post('/api/auth/login', AuthController.login);
+// Antes estava assim:
+// app.get('/api/admin/agenda', AgendamentoController.listarAgendaDoDia);
 
-// ROTAS DE ADMINISTRAÇÃO
-app.get('/api/admin/agenda', AgendamentoController.listarAgendaDoDia);
+// Agora fica assim (O Segurança vem antes do Controller):
+app.get('/api/admin/agenda', authMiddleware, AgendamentoController.listarAgendaDoDia);
 
 // ...
 

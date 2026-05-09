@@ -1,23 +1,29 @@
 import { prisma } from '../config/database.js';
+import bcrypt from 'bcryptjs';
+
 
 export const EmpresaController = {
-  async criar(req, res) {
-    // Removemos 'corPrincipal' e adicionamos 'endereco'
-    const { nome, slug, descricao, logoUrl, endereco } = req.body; 
+async criar(req, res) {
+    // Agora recebemos a senha também!
+    const { nome, slug, descricao, logoUrl, endereco, senha } = req.body; 
     
     try {
+      // Criptografa a senha antes de salvar no banco! (Se não enviar senha, usa "123456" como padrão)
+      const senhaParaSalvar = senha ? senha : "123456";
+      const senhaCriptografada = await bcrypt.hash(senhaParaSalvar, 10);
+
       const novaEmpresa = await prisma.empresa.create({ 
         data: { 
           nome, 
           slug, 
           descricao, 
           logoUrl, 
-          endereco // O Prisma salvará como null se não for enviado
+          endereco,
+          senhaAdmin: senhaCriptografada // Salva a senha protegida!
         } 
       });
       res.status(201).json(novaEmpresa);
     } catch (error) {
-      // Se o erro for de slug duplicado, mandamos uma mensagem amigável
       if (error.code === 'P2002') {
         return res.status(400).json({ erro: "Este link já está em uso por outra empresa." });
       }
