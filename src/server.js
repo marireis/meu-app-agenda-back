@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { ServicoController } from './controller/ServicoController.js';
 import { HorarioController } from './controller/HorarioController.js';
+import { AgendamentoController } from './controller/AgendamentoController.js';
 
 // Inicializa o Prisma e o Express
 const prisma = new PrismaClient();
@@ -17,6 +18,11 @@ app.get('/api/servicos/:empresaId', ServicoController.listarPorEmpresa);
 // Rotas de Agenda (O Empreendedor configurando seus horários de trabalho)
 app.put('/api/horarios', HorarioController.configurar);
 app.get('/api/horarios/:empresaId', HorarioController.listarPorEmpresa);
+// Rotas de Agendamento
+app.get('/api/disponibilidade', AgendamentoController.listarDisponibilidade);
+app.post('/api/agendamentos', AgendamentoController.criar); 
+// Rota do Webhook (O "Telefone" do Asaas)
+app.post('/api/webhook/asaas', AgendamentoController.webhookAsaas);
 
 // ==============================================================================
 // ROTAS DE CONFIGURAÇÃO (ADMIN - O Empreendedor configurando sua loja)
