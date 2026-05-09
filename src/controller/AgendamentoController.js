@@ -85,6 +85,39 @@ export const AgendamentoController = {
     // REGRA DE OURO DOS WEBHOOKS: Temos que responder com "200 OK" super rápido, 
     // senão o Asaas acha que o nosso servidor está offline e fica tentando enviar de novo.
     res.status(200).send('Webhook Recebido');
+  },
+
+  // NOVA FUNÇÃO: Visão do Administrador
+  async listarAgendaDoDia(req, res) {
+    const { empresaId, data } = req.query; // Ex: ?empresaId=...&data=2024-10-25
+
+    if (!empresaId || !data) {
+      return res.status(400).json({ erro: "empresaId e data são obrigatórios." });
+    }
+
+    try {
+      const agenda = await prisma.agendamento.findMany({
+        where: {
+          empresaId: empresaId,
+          dataHora: {
+            // Filtra agendamentos entre o início e o fim do dia escolhido
+            gte: new Date(`${data}T00:00:00Z`),
+            lte: new Date(`${data}T23:59:59Z`)
+          }
+        },
+        include: {
+          servico: true // Traz os detalhes do serviço (nome, preço, duração)
+        },
+        orderBy: {
+          dataHora: 'asc' // Ordena do horário mais cedo para o mais tarde
+        }
+      });
+
+      res.json(agenda);
+    } catch (error) {
+      console.error("Erro ao listar agenda:", error);
+      res.status(500).json({ erro: "Erro ao buscar a agenda do dia." });
+    }
   }
   
 };

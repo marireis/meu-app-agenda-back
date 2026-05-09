@@ -24,6 +24,11 @@ app.post('/api/agendamentos', AgendamentoController.criar);
 // Rota do Webhook (O "Telefone" do Asaas)
 app.post('/api/webhook/asaas', AgendamentoController.webhookAsaas);
 
+// ROTAS DE ADMINISTRAÇÃO
+app.get('/api/admin/agenda', AgendamentoController.listarAgendaDoDia);
+
+// ...
+
 // ==============================================================================
 // ROTAS DE CONFIGURAÇÃO (ADMIN - O Empreendedor configurando sua loja)
 // ==============================================================================
