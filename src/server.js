@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { ServicoController } from './controller/ServicoController.js';
+import { HorarioController } from './controller/HorarioController.js';
 
 // Inicializa o Prisma e o Express
 const prisma = new PrismaClient();
@@ -10,6 +12,11 @@ const app = express();
 // Middlewares Globais (Configurações de segurança e formato de dados)
 app.use(cors()); // Permite que o seu React (Front-end) converse com esta API
 app.use(express.json()); // Diz para o Express entender dados no formato JSON
+app.post('/api/servicos', ServicoController.criar);
+app.get('/api/servicos/:empresaId', ServicoController.listarPorEmpresa);
+// Rotas de Agenda (O Empreendedor configurando seus horários de trabalho)
+app.put('/api/horarios', HorarioController.configurar);
+app.get('/api/horarios/:empresaId', HorarioController.listarPorEmpresa);
 
 // ==============================================================================
 // ROTAS DE CONFIGURAÇÃO (ADMIN - O Empreendedor configurando sua loja)
