@@ -12,13 +12,13 @@ model Empresa {
   id           String   @id @default(uuid())
   nome         String
   slug         String   @unique // URL personalizada: meuapp.com/salao-da-maria
-  logoUrl      String?  
+  logoUrl      String?
   descricao    String?  @db.Text
+  endereco     String?  // O novo campo que adicionamos!
   corPrincipal String   @default("#3B82F6")
-  senhaAdmin   String   @default("123456") // Senha de acesso ao painel desta empresa
+  senhaAdmin   String   @default("123456") 
   criadoEm     DateTime @default(now())
 
-  // RELAÇÕES: Uma empresa tem vários serviços, horários e agendamentos
   servicos     Servico[]
   horarios     HorarioFuncionamento[]
   agendamentos Agendamento[]
@@ -27,31 +27,27 @@ model Empresa {
 // 2. SERVIÇOS (O QUE CADA EMPRESA OFERECE)
 model Servico {
   id        String   @id @default(uuid())
-  nome      String   // Ex: "Corte de Cabelo"
-  preco     Float    // Ex: 50.00
-  duracao   Int      // Duração em minutos: 30, 60, 90 (Crucial para a agenda)
+  nome      String   
+  preco     Float    
+  duracao   Int      
   
-  // RELAÇÃO: Cada serviço pertence a uma única empresa
   empresaId String
   empresa   Empresa  @relation(fields: [empresaId], references: [id])
   
-  // RELAÇÃO: Um serviço pode estar em vários agendamentos
   agendamentos Agendamento[]
 }
 
 // 3. HORÁRIOS DE FUNCIONAMENTO (REGRAS DE DISPONIBILIDADE)
 model HorarioFuncionamento {
   id         String   @id @default(uuid())
-  diaSemana  Int      // 0 (Domingo) a 6 (Sábado)
-  abertura   String   // "08:00"
-  fechamento String   // "18:00"
-  estaAtivo  Boolean  @default(true) // Define se o salão abre nesse dia
+  diaSemana  Int      
+  abertura   String   
+  fechamento String   
+  estaAtivo  Boolean  @default(true) 
 
-  // RELAÇÃO: Cada regra de horário pertence a uma empresa
   empresaId  String
   empresa    Empresa  @relation(fields: [empresaId], references: [id])
 
-  // Garante que não existam dois registros para o mesmo dia na mesma empresa
   @@unique([empresaId, diaSemana]) 
 }
 
@@ -61,18 +57,16 @@ model Agendamento {
   clienteNome     String
   clienteEmail    String
   clienteCpf      String
-  dataHora        DateTime // Data e hora exata do início
-  statusPagamento String   @default("PENDENTE") // PENDENTE, PAGO, CANCELADO
+  dataHora        DateTime 
+  statusPagamento String   @default("PENDENTE") 
   statusReserva   String   @default("AGUARDANDO_PAGAMENTO")
   valorTotal      Float
   asaasPaymentId  String?  @unique
   criadoEm        DateTime @default(now())
 
-  // RELAÇÃO: Vinculado à Empresa (Multi-tenancy)
   empresaId       String
   empresa         Empresa  @relation(fields: [empresaId], references: [id])
 
-  // RELAÇÃO: Vinculado ao Serviço (Para saber a duração e preço)
   servicoId       String
   servico         Servico  @relation(fields: [servicoId], references: [id])
 }
