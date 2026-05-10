@@ -30,7 +30,20 @@ async criar(req, res) {
       res.status(400).json({ erro: "Erro ao criar empresa", detalhes: error.message });
     }
   },
-
+  /**
+   * @openapi
+   * /api/config/{slug}:
+   *   get:
+   *     summary: Recupera configurações da empresa
+   *     description: "O link único da empresa (ex: bellamariastudio)"
+   *     parameters:
+   *       - name: slug
+   *         in: path
+   *         required: true
+   *         description: "O link único da empresa (ex: bellamariastudio)"
+   *         schema:
+   *           type: string
+ */
   async buscarPorSlug(req, res) {
     const { slug } = req.params;
     try {

@@ -1,20 +1,27 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.js'; 
+import { prisma } from "./config/prismaClient.js";
+import { errorMiddleware } from './middleware/errorMiddleware.js';
 import { ServicoController } from './controller/ServicoController.js';
 import { HorarioController } from './controller/HorarioController.js';
 import { AgendamentoController } from './controller/AgendamentoController.js';
 import { AuthController } from './controller/AuthController.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 
-// Inicializa o Prisma e o Express
-const prisma = new PrismaClient();
+
 const app = express();
+
 
 // Middlewares Globais (Configurações de segurança e formato de dados)
 app.use(cors()); // Permite que o seu React (Front-end) converse com esta API
 app.use(express.json()); // Diz para o Express entender dados no formato JSON
+
+// Rota da Documentação - Unificada para evitar erros de declaração
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.post('/api/servicos', ServicoController.criar);
 app.put('/api/servicos/:id', authMiddleware, ServicoController.atualizar); 
 app.delete('/api/servicos/:id', authMiddleware, ServicoController.deletar);
@@ -35,7 +42,9 @@ app.post('/api/auth/login', AuthController.login);
 // Agora fica assim (O Segurança vem antes do Controller):
 app.get('/api/admin/agenda', authMiddleware, AgendamentoController.listarAgendaDoDia);
 
-// ...
+// O Middleware de Erro deve ser SEMPRE o último antes do app.listen
+app.use(errorMiddleware);
+
 
 // ==============================================================================
 // ROTAS DE CONFIGURAÇÃO (ADMIN - O Empreendedor configurando sua loja)
@@ -82,9 +91,8 @@ app.get('/api/config/:slug', async (req, res) => {
 }
 });
 
-// Inicialização do Servidor
 const PORTA = process.env.PORT || 3001;
 app.listen(PORTA, () => {
-  console.log(`🚀 Servidor SaaS rodando na porta ${PORTA}`);
-  console.log(`🌐 Teste a rota: http://localhost:${PORTA}/api/config/SEU-SLUG`);
+  console.log(`🚀 Servidor rodando em http://localhost:${PORTA}`);
+  console.log(`📑 Swagger: http://localhost:${PORTA}/api-docs`);
 });
