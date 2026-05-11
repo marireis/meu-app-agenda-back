@@ -1,10 +1,9 @@
 import { Router } from 'express';
-
-import { EmpresaController } from '../controller/EmpresaController.js'; 
+import { EmpresaController } from '../controller/EmpresaController.js';
 
 const router = Router();
 
-router.post('/empresas', EmpresaController.criar);
-router.get('/empresas/:slug', EmpresaController.buscarPorSlug);
+router.post('/', EmpresaController.criar);
+router.get('/:slug', EmpresaController.buscarPorSlug);
 
 export default router;

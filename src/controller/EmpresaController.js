@@ -1,64 +1,38 @@
-import { prisma } from '../config/database.js';
-import bcrypt from 'bcryptjs';
-
+// src/controller/EmpresaController.js
+import { prisma } from '../config/prismaClient.js';
 
 export const EmpresaController = {
-async criar(req, res) {
-    // Agora recebemos a senha também!
-    const { nome, slug, descricao, logoUrl, endereco, senha } = req.body; 
-    
+  // Adicionado 'next' aqui
+  async criar(req, res, next) { 
+    const { nome, slug, corPrincipal, descricao } = req.body;
     try {
-      // Criptografa a senha antes de salvar no banco! (Se não enviar senha, usa "123456" como padrão)
-      const senhaParaSalvar = senha ? senha : "123456";
-      const senhaCriptografada = await bcrypt.hash(senhaParaSalvar, 10);
-
-      const novaEmpresa = await prisma.empresa.create({ 
-        data: { 
-          nome, 
-          slug, 
-          descricao, 
-          logoUrl, 
-          endereco,
-          senhaAdmin: senhaCriptografada // Salva a senha protegida!
-        } 
+      const novaEmpresa = await prisma.empresa.create({
+        data: { nome, slug, corPrincipal, descricao }
       });
       res.status(201).json(novaEmpresa);
     } catch (error) {
-      if (error.code === 'P2002') {
-        return res.status(400).json({ erro: "Este link já está em uso por outra empresa." });
-      }
-      res.status(400).json({ erro: "Erro ao criar empresa", detalhes: error.message });
+      // Deixa o Middleware de Erro decidir o que responder
+      next(error); 
     }
   },
-  /**
-   * @openapi
-   * /api/config/{slug}:
-   *   get:
-   *     summary: Recupera configurações da empresa
-   *     description: "O link único da empresa (ex: bellamariastudio)"
-   *     parameters:
-   *       - name: slug
-   *         in: path
-   *         required: true
-   *         description: "O link único da empresa (ex: bellamariastudio)"
-   *         schema:
-   *           type: string
- */
-  async buscarPorSlug(req, res) {
-    const { slug } = req.params;
+
+  async buscarPorSlug(req, res, next) {
     try {
       const empresa = await prisma.empresa.findUnique({
-        where: { slug },
-        include: { 
-          servicos: true,
-          horarios: true // Importante para o front montar a agenda
-        } 
+        where: { slug: req.params.slug },
+        include: { servicos: true, horarios: true }
       });
       
-      if (!empresa) return res.status(404).json({ erro: "Empresa não encontrada" });
+      if (!empresa) {
+        // Você pode criar um erro customizado ou passar uma mensagem
+        const error = new Error("Empresa não encontrada.");
+        error.statusCode = 404;
+        return next(error);
+      }
+      
       res.json(empresa);
     } catch (error) {
-      res.status(500).json({ erro: "Erro ao buscar empresa" });
+      next(error);
     }
   }
 };
