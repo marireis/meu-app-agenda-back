@@ -8,47 +8,54 @@ datasource db {
 }
 
 // 1. A EMPRESA (O PROFISSIONAL/CLIENTE SAAS)
+
 model Empresa {
-  id           String   @id @default(uuid())
+  id           String   @id @default(cuid())
   nome         String
-  slug         String   @unique // URL personalizada: meuapp.com/salao-da-maria
-  logoUrl      String?
-  descricao    String?  @db.Text
-  endereco     String?  // O novo campo que adicionamos!
-  corPrincipal String   @default("#3B82F6")
-  senhaAdmin   String   @default("123456") 
+  slug         String   @unique
+  email        String   @unique
+  senhaAdmin   String
+  documento    String   @unique
+  telefone     String
+  corPrincipal String?
+  descricao    String?
   criadoEm     DateTime @default(now())
 
   servicos     Servico[]
   horarios     HorarioFuncionamento[]
   agendamentos Agendamento[]
+
+  @@map("empresas")
 }
 
 // 2. SERVIÇOS (O QUE CADA EMPRESA OFERECE)
 model Servico {
-  id        String   @id @default(uuid())
-  nome      String   
-  preco     Float    
-  duracao   Int      
-  
+  id      String @id @default(uuid())
+  nome    String
+  preco   Float
+  duracao Int
+
   empresaId String
-  empresa   Empresa  @relation(fields: [empresaId], references: [id])
-  
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
   agendamentos Agendamento[]
+
+  @@map("servicos")
 }
 
 // 3. HORÁRIOS DE FUNCIONAMENTO (REGRAS DE DISPONIBILIDADE)
 model HorarioFuncionamento {
-  id         String   @id @default(uuid())
-  diaSemana  Int      
-  abertura   String   
-  fechamento String   
-  estaAtivo  Boolean  @default(true) 
+  id         String  @id @default(uuid())
+  diaSemana  Int
+  abertura   String
+  fechamento String
+  estaAtivo  Boolean @default(true)
 
-  empresaId  String
-  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  @@unique([empresaId, diaSemana]) 
+  @@unique([empresaId, diaSemana])
+  @@map("horarios_funcionamento")
 }
 
 // 4. AGENDAMENTOS (A TRANSAÇÃO FINAL)
@@ -57,16 +64,18 @@ model Agendamento {
   clienteNome     String
   clienteEmail    String
   clienteCpf      String
-  dataHora        DateTime 
-  statusPagamento String   @default("PENDENTE") 
+  dataHora        DateTime
+  statusPagamento String   @default("PENDENTE")
   statusReserva   String   @default("AGUARDANDO_PAGAMENTO")
   valorTotal      Float
   asaasPaymentId  String?  @unique
   criadoEm        DateTime @default(now())
 
-  empresaId       String
-  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  servicoId       String
-  servico         Servico  @relation(fields: [servicoId], references: [id])
+  servicoId String
+  servico   Servico @relation(fields: [servicoId], references: [id])
+
+  @@map("agendamentos")
 }

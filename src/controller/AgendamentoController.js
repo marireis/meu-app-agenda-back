@@ -20,44 +20,71 @@ export const AgendamentoController = {
   },
 
   // NOVA FUNÇÃO: Criar a reserva no banco de dados
-  async criar(req, res) {
-    const { clienteNome, clienteEmail, clienteCpf, dataHora, valorTotal, empresaId, servicoId } = req.body;
 
-    try {
-      // 1. Gera a cobrança Pix de 50% via Asaas
-      const dadosPix = await AsaasService.gerarCobrancaPix(clienteNome, clienteCpf, valorTotal);
+async criar(req, res) {
+  const { clienteNome, clienteEmail, clienteCpf, dataHora, empresaId, servicoId } = req.body;
 
-      // 2. Cria a reserva no banco de dados com o ID do Asaas
-      const novoAgendamento = await prisma.agendamento.create({
-        data: {
-          clienteNome,
-          clienteEmail,
-          clienteCpf,
-          dataHora: new Date(dataHora),
-          valorTotal,
-          empresaId,
-          servicoId,
-          statusReserva: "AGUARDANDO_PAGAMENTO",
-          statusPagamento: "PENDENTE",
-          asaasPaymentId: dadosPix.asaasPaymentId // Guardamos o ID para atualizar depois!
-        }
-      });
-
-      // 3. Retorna o sucesso e os dados do PIX para o Front-end exibir a tela de pagamento
-      res.status(201).json({ 
-        mensagem: "Horário reservado por 10 minutos! Efetue o pagamento para confirmar.", 
-        agendamentoId: novoAgendamento.id,
-        pix: {
-          copiaECola: dadosPix.payload,
-          qrCodeBase64: dadosPix.encodedImage
-        }
-      });
-    } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
-      res.status(400).json({ erro: "Erro ao processar a reserva. Verifique a integração com o financeiro." });
+  try {
+    // 1. Validação básica: verifica se todos os campos vieram na requisição
+    if (!clienteNome || !clienteCpf || !dataHora || !servicoId) {
+       return res.status(400).json({ erro: "Campos obrigatórios ausentes no corpo da requisição." });
     }
-  },
 
+    // 2. Busca o preço real do serviço
+    const servico = await prisma.servico.findUnique({ where: { id: servicoId } });
+    if (!servico) {
+      return res.status(404).json({ erro: "Serviço não encontrado no banco de dados." });
+    }
+
+    const valorTotal = servico.preco;
+
+    // 3. Chamada ao Asaas (Ponto crítico de erro)
+    let dadosPix;
+    try {
+      dadosPix = await AsaasService.gerarCobrancaPix(clienteNome, clienteCpf, valorTotal);
+    } catch (asaasError) {
+      console.error("❌ Erro na Integração Asaas:", asaasError.message);
+      return res.status(424).json({ 
+        erro: "Falha na comunicação com o provedor de pagamento.", 
+        detalhes: asaasError.message 
+      });
+    }
+
+    // 4. Criação no Prisma
+    const novoAgendamento = await prisma.agendamento.create({
+      data: {
+        clienteNome,
+        clienteEmail,
+        clienteCpf,
+        dataHora: new Date(dataHora),
+        valorTotal,
+        empresaId,
+        servicoId,
+        statusReserva: "AGUARDANDO_PAGAMENTO",
+        statusPagamento: "PENDENTE",
+        asaasPaymentId: dadosPix.asaasPaymentId
+      }
+    });
+
+    res.status(201).json({ 
+      mensagem: "Horário reservado! Efetue o pagamento.", 
+      agendamentoId: novoAgendamento.id,
+      pix: {
+        copiaECola: dadosPix.payload,
+        qrCodeBase64: dadosPix.encodedImage
+      }
+    });
+
+  } catch (error) {
+    // Esse log no console é fundamental para você ler o erro real no terminal
+    console.error("❌ Erro Completo no Controller:", error);
+    
+    res.status(500).json({ 
+      erro: "Erro interno ao processar agendamento.",
+      mensagem: error.message // Temporariamente exibindo para debug
+    });
+  }
+},
   // NOVA FUNÇÃO: Receber o aviso de pagamento do Asaas
   async webhookAsaas(req, res) {
     // O Asaas envia um objeto grande, mas só precisamos saber qual foi o "evento" e os dados do "pagamento"
@@ -89,10 +116,11 @@ export const AgendamentoController = {
 
   // NOVA FUNÇÃO: Visão do Administrador
   async listarAgendaDoDia(req, res) {
-    const { empresaId, data } = req.query; // Ex: ?empresaId=...&data=2024-10-25
+    const empresaId = req.empresaId; // ← vem do token
+    const { data } = req.query;      // ← só a data vem da URL
 
     if (!empresaId || !data) {
-      return res.status(400).json({ erro: "empresaId e data são obrigatórios." });
+      return res.status(400).json({ erro: " data são obrigatórios." });
     }
 
     try {

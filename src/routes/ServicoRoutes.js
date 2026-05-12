@@ -4,9 +4,11 @@ import { authMiddleware } from '../middleware/AuthMiddleware.js';
 
 const router = Router();
 
+router.use(authMiddleware); // ← aplica em todas as rotas de uma vez
+
+router.get('/', ServicoController.listar);
 router.post('/', ServicoController.criar);
-router.get('/:empresaId', ServicoController.listar);
-router.put('/:id', authMiddleware, ServicoController.atualizar);
-router.delete('/:id', authMiddleware, ServicoController.deletar);
+router.put('/:id', ServicoController.atualizar);
+router.delete('/:id', ServicoController.deletar);
 
 export default router;

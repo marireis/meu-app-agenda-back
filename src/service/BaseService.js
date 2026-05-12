@@ -19,17 +19,21 @@ export class BaseService {
 
   // Busca um registro específico garantindo que pertença à empresa
   async findById(id, empresaId) {
-    const registro = await this.model.findFirst({
-      where: { id, empresaId }
-    });
-    
-    if (!registro) {
-      const error = new Error("Registro não encontrado ou acesso negado.");
-      error.status = 404;
-      throw error;
-    }
-    return registro;
+  console.log('🔍 findById chamado com:', { id, empresaId });
+  
+  const registro = await this.model.findFirst({
+    where: { id, empresaId }
+  });
+
+  console.log('📦 Resultado:', registro);
+  
+  if (!registro) {
+    const error = new Error("Registro não encontrado ou acesso negado.");
+    error.status = 404;
+    throw error;
   }
+  return registro;
+}
 
   // Cria um registro vinculando-o automaticamente à empresa do Token
   async create(empresaId, data) {

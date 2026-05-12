@@ -26,14 +26,16 @@ app.use('/api/empresas', empresaRoutes);
 app.use('/api/config', empresaRoutes);  // buscarPorSlug usa /:slug
 app.use('/api/servicos', servicoRoutes);
 app.use('/api/horarios', horarioRoutes);
-app.use('/api', agendamentoRoutes);
+app.use('/api/agendamentos', agendamentoRoutes);
 app.use('/api/auth', authRoutes);
 
 // Middleware de erro (sempre por último)
 app.use(errorMiddleware);
+
 
 const PORTA = process.env.PORT || 3001;
 app.listen(PORTA, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORTA}`);
   console.log(`📑 Swagger: http://localhost:${PORTA}/api-docs`);
 });
+
