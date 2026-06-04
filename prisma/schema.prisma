@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Essencial para o Prisma ler a DIRECT_URL informada no seu .env
 }
 
 model Empresa {
@@ -19,74 +20,94 @@ model Empresa {
   telefone     String
   corPrincipal String?
   descricao    String?
+  statusSaaS   String   @default("ATIVO") // ATIVO, SUSPENSO, DEGUSTACAO
   criadoEm     DateTime @default(now())
 
-  servicos      Servico[]
-  horarios      HorarioFuncionamento[]
-  agendamentos  Agendamento[]
-  profissionais Profissional[]         // novo
+  servicos     Servico[]
+  horarios     HorarioFuncionamento[]
+  agendamentos Agendamento[]
+  profissionais Profissional[]
+  bloqueios    BloqueioAgenda[]
 
   @@map("empresas")
 }
 
 model Servico {
-  id      String @id @default(uuid())
-  nome    String
-  preco   Float
-  duracao Int    // em minutos
+  id        String @id @default(uuid())
+  nome      String
+  preco     Float
+  duracao   Int    // em minutos
 
   empresaId String
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  agendamentos Agendamento[]
-
-  // Um serviço pode ser oferecido por vários profissionais
-  profissionais ProfissionalServico[]  // novo
+  agendamentos  Agendamento[]
+  profissionais ProfissionalServico[]
 
   @@map("servicos")
 }
 
-// NOVO MODEL
 model Profissional {
   id        String  @id @default(uuid())
   nome      String
+  email     String? // Importante para login/notificações do profissional futuramente
   telefone  String?
-  foto      String? // URL da foto
+  foto      String? 
   estaAtivo Boolean @default(true)
 
   empresaId String
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   agendamentos Agendamento[]
-  servicos     ProfissionalServico[]  // serviços que este profissional executa
+  servicos     ProfissionalServico[]
+  horarios     HorarioFuncionamento[] // Permite horários customizados por profissional
+  bloqueios    BloqueioAgenda[]
 
   @@map("profissionais")
 }
 
-// NOVO MODEL — tabela de junção Profissional <-> Servico
 model ProfissionalServico {
   profissionalId String
   servicoId      String
 
-  profissional Profissional @relation(fields: [profissionalId], references: [id])
-  servico      Servico      @relation(fields: [servicoId],      references: [id])
+  profissional Profissional @relation(fields: [profissionalId], references: [id], onDelete: Cascade)
+  servico      Servico      @relation(fields: [servicoId], references: [id], onDelete: Cascade)
 
   @@id([profissionalId, servicoId])
   @@map("profissional_servicos")
 }
 
 model HorarioFuncionamento {
-  id         String  @id @default(uuid())
-  diaSemana  Int     // 0=Dom, 1=Seg … 6=Sab
-  abertura   String  // "09:00"
-  fechamento String  // "18:00"
-  estaAtivo  Boolean @default(true)
+  id         String   @id @default(uuid())
+  diaSemana  Int      // 0=Dom, 1=Seg … 6=Sab
+  abertura   String   // "09:00"
+  fechamento String   // "18:00"
+  estaAtivo  Boolean  @default(true)
 
-  empresaId String
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  @@unique([empresaId, diaSemana])
+  profissionalId String? // Opcional: Se nulo, aplica-se à empresa inteira. Se preenchido, é a agenda customizada do profissional.
+  profissional   Profissional? @relation(fields: [profissionalId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, profissionalId, diaSemana]) // Modificado para aceitar unicidade composta com profissional
   @@map("horarios_funcionamento")
+}
+
+// NOVO MODEL: Essencial para o profissional gerenciar exceções na agenda (Ex: Horário de almoço, folga médica)
+model BloqueioAgenda {
+  id             String   @id @default(uuid())
+  descricao      String?  // Ex: "Consulta Médica"
+  dataInicio     DateTime // Timestamp completo do início do bloqueio
+  dataFim        DateTime // Timestamp completo do fim do bloqueio
+
+  empresaId      String
+  empresa        Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  
+  profissionalId String
+  profissional   Profissional @relation(fields: [profissionalId], references: [id], onDelete: Cascade)
+
+  @@map("bloqueios_agenda")
 }
 
 model Agendamento {
@@ -94,20 +115,23 @@ model Agendamento {
   clienteNome     String
   clienteEmail    String
   clienteCpf      String
-  dataHora        DateTime
-  statusPagamento String   @default("PENDENTE")
-  statusReserva   String   @default("AGUARDANDO_PAGAMENTO")
+  dataHora        DateTime // Início do agendamento
+  dataHoraFim     DateTime // Fim calculado do agendamento (dataHora + duracao do servico) - Evita Race Conditions!
+  statusPagamento String   @default("PENDENTE") // PENDENTE, PAGO, REEMBOLSADO
+  statusReserva   String   @default("AGUARDANDO_PAGAMENTO") // AGUARDANDO_PAGAMENTO, CONFIRMADO, CANCELADO
   valorTotal      Float
+  valorSinal      Float    // Equivalente aos 50% obrigatórios para reservar
   asaasPaymentId  String?  @unique
   criadoEm        DateTime @default(now())
 
   empresaId String
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   servicoId String
   servico   Servico @relation(fields: [servicoId], references: [id])
 
-  profissionalId String?                // opcional no banco
-  profissional   Profissional? @relation(fields: [profissionalId], references: [id])
+  profissionalId String
+  profissional   Profissional @relation(fields: [profissionalId], references: [id])
+
   @@map("agendamentos")
 }

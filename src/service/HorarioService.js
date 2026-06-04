@@ -6,17 +6,20 @@ class HorarioService extends BaseService {
     super(prisma.horarioFuncionamento);
   }
 
-  // Sobrescreve o create para usar upsert — regra: um registro por dia por empresa
+  // Ajustado para a nova chave composta com profissionalId opcional (global da empresa)
   async configurar(empresaId, data) {
-    const { diaSemana, abertura, fechamento, estaAtivo } = data;
+    const { diaSemana, abertura, fechamento, estaAtivo, profissionalId = null } = data;
 
     return await prisma.horarioFuncionamento.upsert({
       where: {
-        // Chave única composta no schema do Prisma: @@unique([empresaId, diaSemana])
-        empresaId_diaSemana: { empresaId, diaSemana }
+        empresaId_profissionalId_diaSemana: { 
+          empresaId, 
+          profissionalId, 
+          diaSemana 
+        }
       },
       update: { abertura, fechamento, estaAtivo },
-      create: { empresaId, diaSemana, abertura, fechamento, estaAtivo }
+      create: { empresaId, profissionalId, diaSemana, abertura, fechamento, estaAtivo }
     });
   }
 }

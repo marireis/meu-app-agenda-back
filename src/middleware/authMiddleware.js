@@ -1,11 +1,9 @@
+// src/middleware/AuthMiddleware.js
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-
 export const authMiddleware = (req, res, next) => {
-
-
   // 1. O cliente deve enviar a pulseira no (Header) da requisição
   const authHeader = req.headers.authorization;
 
@@ -22,11 +20,22 @@ export const authMiddleware = (req, res, next) => {
 
   const token = partes[1];
 
-   console.log('empresaId do token:', req.empresaId);
   try {
+    // 3. Valida e decodifica a pulseira (token)
     const decodificado = jwt.verify(token, JWT_SECRET);
+    
+    // Proteção SaaS: Se por acaso o token for válido mas não tiver o ID da empresa no payload, barra o acesso
+    if (!decodificado.empresaId) {
+      return res.status(401).json({ erro: "Token inválido: identificador da empresa ausente." });
+    }
+
+    // 4. Injeta as informações na requisição para uso dos Controllers e Services
     req.usuario = decodificado;
     req.empresaId = decodificado.empresaId; 
+
+    // Agora o log vai funcionar perfeitamente mostrando qual empresa está acessando a rota!
+    console.log(`🔑 [SaaS Auth] Empresa autenticada: ${req.empresaId} acessando ${req.method} ${req.url}`);
+
     next();
   } catch (error) {
     return res.status(401).json({ erro: "Token inválido ou expirado. Faça login novamente." });

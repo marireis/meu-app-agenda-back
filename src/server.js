@@ -6,6 +6,8 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.js';
 import { errorMiddleware } from './middleware/ErrorMiddleware.js';
 
+import profissionalRoutes from './routes/ProfissionalRoutes.js';
+import webhookRoutes from './routes/WebhookRoutes.js';
 import empresaRoutes from './routes/EmpresaRoutes.js';
 import servicoRoutes from './routes/ServicoRoutes.js';
 import horarioRoutes from './routes/HorarioRoutes.js';
@@ -14,6 +16,7 @@ import authRoutes from './routes/AuthRoutes.js';
 
 const app = express();
 
+app.use('/api/webhooks', webhookRoutes);
 // Middlewares globais
 app.use(cors());
 app.use(express.json());

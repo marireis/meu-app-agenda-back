@@ -1,20 +1,20 @@
+// src/routes/AgendamentoRoutes.js
 import { Router } from 'express';
 import { AgendamentoController } from '../controller/AgendamentoController.js';
 import { authMiddleware } from '../middleware/AuthMiddleware.js';
 
 const router = Router();
 
-// Acessível em: GET /api/agendamentos/disponibilidade
-router.get('/disponibilidade', AgendamentoController.listarDisponibilidade);
+// Rota pública de consulta (Parâmetro de slug na URL)
+router.get('/:slug/disponibilidade', AgendamentoController.listarDisponibilidade);
 
-// Acessível em: POST /api/agendamentos
-// (O '/' aqui se soma ao '/api/agendamentos' do server.js)
+// Rota pública para criar o agendamento
 router.post('/', AgendamentoController.criar);
 
-// Acessível em: POST /api/agendamentos/webhook/asaas
+// Rota pública para receber o Webhook do Asaas (Sem authMiddleware!)
 router.post('/webhook/asaas', AgendamentoController.webhookAsaas);
 
-// Acessível em: GET /api/agendamentos/admin/agenda
+// Rota Administrativa Protegida (Exige a pulseira JWT no Header)
 router.get('/admin/agenda', authMiddleware, AgendamentoController.listarAgendaDoDia);
 
 export default router;

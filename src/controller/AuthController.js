@@ -1,62 +1,63 @@
-import { prisma } from '../config/database.js';
+// src/controller/AuthController.js
+import { prisma } from '../config/prismaClient.js'; // ou '../config/database.js' ajuste conforme seu projeto
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
 export const AuthController = {
-  async login(req, res) {
-    const { slug, senha } = req.body;
-
-    // Validação de configuração de ambiente
-    if (!JWT_SECRET) {
-      console.error("ERRO CRÍTICO: JWT_SECRET não configurado.");
-      return res.status(500).json({ erro: "Erro de configuração do servidor." });
-    }
-
-    if (!slug || !senha) {
-      return res.status(400).json({ erro: "Link (slug) e senha são obrigatórios." });
-    }
-
+  async login(req, res, next) {
     try {
-      const empresa = await prisma.empresa.findUnique({ where: { slug } });
+      const { email, senha } = req.body;
 
-      if (!empresa) {
-        return res.status(401).json({ erro: "Credenciais inválidas." });
+      // 1. Validação básica de entrada
+      if (!email || !senha) {
+        return res.status(400).json({ erro: "E-mail e senha são obrigatórios." });
       }
 
-      // SEGURANÇA: Comparação rigorosa com Bcrypt. 
-      // Removida a verificação de texto puro para evitar vulnerabilidades.
+      // 2. Busca a empresa administradora pelo e-mail
+      const empresa = await prisma.empresa.findUnique({
+        where: { email }
+      });
+
+      if (!empresa) {
+        return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+      }
+
+      // 3. Valida a senha criptografada
       const senhaValida = await bcrypt.compare(senha, empresa.senhaAdmin);
 
       if (!senhaValida) {
-        return res.status(401).json({ erro: "Credenciais inválidas." });
+        return res.status(401).json({ erro: "E-mail ou senha incorretos." });
       }
 
-      // PAYLOAD: Informações essenciais para o Multi-tenancy
+      // 4. Verifica se a conta SaaS não está bloqueada/suspensa
+      if (empresa.statusSaaS !== 'ATIVO' && empresa.statusSaaS !== 'DEGUSTACAO') {
+        return res.status(403).json({ erro: "Acesso bloqueado. Entre em contato com o suporte do SaaS." });
+      }
+
+      // 5. Gera o Token JWT contendo o ID da empresa no Payload (A mágica do Multi-tenant)
       const token = jwt.sign(
         { 
-          empresaId: empresa.id, 
-          slug: empresa.slug,
-          role: 'ADMIN' // Útil para middlewares de permissão futuros
-        }, 
-        JWT_SECRET, 
-        { expiresIn: '7d' } 
+          empresaId: empresa.id,
+          nome: empresa.nome,
+          slug: empresa.slug
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '1d' } // Token expira em 1 dia
       );
 
+      // 6. Retorna o token e os dados públicos da empresa
       return res.json({
-        mensagem: "Login efetuado com sucesso!",
         token,
         empresa: {
           id: empresa.id,
           nome: empresa.nome,
-          slug: empresa.slug
+          slug: empresa.slug,
+          email: empresa.email
         }
       });
 
     } catch (error) {
-      console.error("Erro no login:", error);
-      return res.status(500).json({ erro: "Erro interno ao processar o login." });
+      next(error);
     }
   }
 };
