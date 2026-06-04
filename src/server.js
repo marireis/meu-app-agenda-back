@@ -23,7 +23,6 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Rotas
 app.use('/api/empresas', empresaRoutes);
-app.use('/api/config', empresaRoutes);  // buscarPorSlug usa /:slug
 app.use('/api/servicos', servicoRoutes);
 app.use('/api/horarios', horarioRoutes);
 app.use('/api/agendamentos', agendamentoRoutes);

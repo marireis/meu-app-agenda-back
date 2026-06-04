@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,8 +8,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// 1. A EMPRESA (O PROFISSIONAL/CLIENTE SAAS)
 
 model Empresa {
   id           String   @id @default(cuid())
@@ -21,34 +21,65 @@ model Empresa {
   descricao    String?
   criadoEm     DateTime @default(now())
 
-  servicos     Servico[]
-  horarios     HorarioFuncionamento[]
-  agendamentos Agendamento[]
+  servicos      Servico[]
+  horarios      HorarioFuncionamento[]
+  agendamentos  Agendamento[]
+  profissionais Profissional[]         // novo
 
   @@map("empresas")
 }
 
-// 2. SERVIÇOS (O QUE CADA EMPRESA OFERECE)
 model Servico {
   id      String @id @default(uuid())
   nome    String
   preco   Float
-  duracao Int
+  duracao Int    // em minutos
 
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id])
 
   agendamentos Agendamento[]
 
+  // Um serviço pode ser oferecido por vários profissionais
+  profissionais ProfissionalServico[]  // novo
+
   @@map("servicos")
 }
 
-// 3. HORÁRIOS DE FUNCIONAMENTO (REGRAS DE DISPONIBILIDADE)
+// NOVO MODEL
+model Profissional {
+  id        String  @id @default(uuid())
+  nome      String
+  telefone  String?
+  foto      String? // URL da foto
+  estaAtivo Boolean @default(true)
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  agendamentos Agendamento[]
+  servicos     ProfissionalServico[]  // serviços que este profissional executa
+
+  @@map("profissionais")
+}
+
+// NOVO MODEL — tabela de junção Profissional <-> Servico
+model ProfissionalServico {
+  profissionalId String
+  servicoId      String
+
+  profissional Profissional @relation(fields: [profissionalId], references: [id])
+  servico      Servico      @relation(fields: [servicoId],      references: [id])
+
+  @@id([profissionalId, servicoId])
+  @@map("profissional_servicos")
+}
+
 model HorarioFuncionamento {
   id         String  @id @default(uuid())
-  diaSemana  Int
-  abertura   String
-  fechamento String
+  diaSemana  Int     // 0=Dom, 1=Seg … 6=Sab
+  abertura   String  // "09:00"
+  fechamento String  // "18:00"
   estaAtivo  Boolean @default(true)
 
   empresaId String
@@ -58,7 +89,6 @@ model HorarioFuncionamento {
   @@map("horarios_funcionamento")
 }
 
-// 4. AGENDAMENTOS (A TRANSAÇÃO FINAL)
 model Agendamento {
   id              String   @id @default(uuid())
   clienteNome     String
@@ -77,5 +107,7 @@ model Agendamento {
   servicoId String
   servico   Servico @relation(fields: [servicoId], references: [id])
 
+  profissionalId String?                // opcional no banco
+  profissional   Profissional? @relation(fields: [profissionalId], references: [id])
   @@map("agendamentos")
 }
