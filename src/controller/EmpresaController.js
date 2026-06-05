@@ -52,17 +52,18 @@ export const EmpresaController = {
 
   async buscarPorSlug(req, res, next) {
     try {
+      const { slug } = req.params; // Captura o 'salao-bella' da URL
+
       const empresa = await prisma.empresa.findUnique({
-        where: { slug: req.params.slug },
-        include: { servicos: true, horarios: true }
+        where: { slug: slug }, // Procura no banco de dados
+        include: { servicos: true, horarios: true } // Traz os serviços associados!
       });
 
       if (!empresa) {
-        const error = new Error("Empresa não encontrada.");
-        error.statusCode = 404;
-        return next(error);
+        return res.status(404).json({ erro: "Empresa não encontrada." });
       }
 
+      // Remove informações sensíveis antes de mandar pro front público
       const { senhaAdmin, documento, ...empresaSemSenha } = empresa;
       return res.json(empresaSemSenha);
 

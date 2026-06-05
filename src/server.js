@@ -30,6 +30,7 @@ app.use('/api/servicos', servicoRoutes);
 app.use('/api/horarios', horarioRoutes);
 app.use('/api/agendamentos', agendamentoRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/profissionais', profissionalRoutes);
 
 // Middleware de erro (sempre por último)
 app.use(errorMiddleware);
